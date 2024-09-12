@@ -23,10 +23,8 @@ float foldAmount = 1;
 
 // Timing variables
 int sampleRate;             // To hold the audio sample rate
-int cvSendInterval;         // Interval for sending CV output
 int sampleCounter = 0;      // Sample counter to track elapsed samples
 int msInterval = 500;       // Send every 500 ms
-int gateSamples = 44100/8;  //Gate is closed 250 ms after clock tick
 
 // Turing variables
 float midiNotes[5] = {0, 0.167, 0.25, 0.333, 0.417};    // Selection of notes in CV
@@ -87,7 +85,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 
         // Adjust timing with CV_2
         float timingControlKnob = patch.GetAdcValue(CV_2);
-        msInterval = static_cast<int>(timingControlKnob * 1000);
+        msInterval = static_cast<int>(1010 - (timingControlKnob * 1000));
 
         // Adjust buffer length with CV_3
         float lengthControlKnob = patch.GetAdcValue(CV_3);
@@ -98,7 +96,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         foldAmount = 1 + foldCV*foldKnob*3;
         wf.SetGain(foldAmount);
 
-        if (sampleCounter >= gateSamples)
+        if (sampleCounter >= (int (samplesToSend/2)))
         {
             patch.WriteCvOut(2,0);
         }
@@ -117,7 +115,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     }
 
 
-    if (sampleCounter >= gateSamples)
+    if (sampleCounter >= (int (samplesToSend/2)))
     {
         // Deactivate gate signal (set to low)
         dsy_gpio_write(&patch.gate_out_1, 0);
@@ -142,7 +140,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         }
         osc.SetFreq(mtof(groundKeyMidi[(counter/16)]));
         dsy_gpio_write(&patch.gate_out_1, turingGates[counter]);
-        dsy_gpio_write(&patch.gate_out_2, turingGates[counter]);
+        dsy_gpio_write(&patch.gate_out_2, (turingGates[counter]*-1) + 1);
         counter = (counter + 1) % turingLength; // Cycle through `midiNotes`
         sampleCounter = 0; 
     }
