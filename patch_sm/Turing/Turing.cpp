@@ -121,6 +121,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     {
         // Deactivate gate signal (set to low)
         dsy_gpio_write(&patch.gate_out_1, 0);
+        dsy_gpio_write(&patch.gate_out_2, 0);
     }
     if (sampleCounter >= samplesToSend)
     {
@@ -141,6 +142,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         }
         osc.SetFreq(mtof(groundKeyMidi[(counter/16)]));
         dsy_gpio_write(&patch.gate_out_1, turingGates[counter]);
+        dsy_gpio_write(&patch.gate_out_2, turingGates[counter]);
         counter = (counter + 1) % turingLength; // Cycle through `midiNotes`
         sampleCounter = 0; 
     }
