@@ -139,8 +139,11 @@ void AudioCallback(AudioHandle::InputBuffer  in,
             patch.WriteCvOut(1, turingBuffer[counter] +  (groundKey[(counter/16)])); // Send current note
         }
         osc.SetFreq(mtof(groundKeyMidi[(counter/16)]));
+        if (counter%16==0)
+        {
+            dsy_gpio_write(&patch.gate_out_2, 1);
+        }
         dsy_gpio_write(&patch.gate_out_1, turingGates[counter]);
-        dsy_gpio_write(&patch.gate_out_2, (turingGates[counter]*-1) + 1);
         counter = (counter + 1) % turingLength; // Cycle through `midiNotes`
         sampleCounter = 0; 
     }
