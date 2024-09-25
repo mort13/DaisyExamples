@@ -62,12 +62,12 @@ Ported from [pichenettes/eurorack](https://github.com/pichenettes/eurorack)
   </tr>
   <tr>
     <td>CV_5</td>
-    <td colspan="2">Position CV Input</td>
+    <td colspan="2">V/Oct CV Input</td>
     <td></td>
   </tr>
   <tr>
     <td>CV_6</td>
-    <td colspan="2">Dry/Wet CV Input</td>
+    <td colspan="2">Position CV Input</td>
     <td></td>
   </tr>
   <tr>
@@ -77,7 +77,7 @@ Ported from [pichenettes/eurorack](https://github.com/pichenettes/eurorack)
   </tr>
   <tr>
     <td>CV_8</td>
-    <td colspan="2">Pitch CV Input (V/Oct)</td>
+    <td colspan="2">Texture CV Input</td>
     <td></td>
   </tr>
   <tr>
