@@ -13,12 +13,13 @@ audio processor, specializing in making huge clouds of sound from even the tinie
 Ported from [pichenettes/eurorack](https://github.com/pichenettes/eurorack)
 
 ## TODO list for the Patch SM Port:
-- Looks like CV now only works when SW is Up, fix this.
 - Check if V/Oct CV input tracks properly
 - Idea: Think of a function for CV1 Out (maybe Envelope Follower for Input Signal / VU meter)
 
 ## Controls
 Every knob has two functions depending on the toggle switch. Only if the position of the knob matches the last stored value of the parameter the knob will control the parameter. This allows you to tweak only one setting when flipping the switch without the other parameters to be changed aswell. But starting the module you might need to twist the knobs to find the "last stored value".
+
+
 
 <table><thead>
   <tr>
