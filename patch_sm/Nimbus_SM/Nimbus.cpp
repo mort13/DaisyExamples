@@ -1,27 +1,43 @@
 #include "daisy_patch_sm.h"
 #include "daisysp.h"
 #include "granular_processor.h"
+#include "calibrate.h"
+#include "settings.h"
+
 
 using namespace daisysp;
 using namespace daisy;
 using namespace patch_sm;
+using namespace nimbus;
 
-GranularProcessorClouds processor;
-DaisyPatchSM              hw;
-Switch toggle, mode_button;
+GranularProcessorClouds     processor;
+DaisyPatchSM                hw;
+Switch                      toggle, mode_button;
+Calibrate                   calibration;
+PersistentStorage<Settings> storage(hw.qspi);
+Settings                    default_settings{};
+
+SettingsState settings_state{NONE};
 // Pre-allocate big blocks in main memory and CCM. No malloc here.
 uint8_t block_mem[(118784*2)];
 uint8_t block_ccm[(65536*2) - 128];
 
 Parameters* parameters;
+enum SettingsState
+{
+    NONE,
+    CALIBRATE
+};
 
-int pbmode = 0;
-float led_mode = 5;
-int quality = 0;
-float led_quality = 0;
+bool    trigger_save;
+int     pbmode = 0;
+float   led_mode = 5;
+int     quality = 0;
+float   led_quality = 0;
 
 void controls()
 {
+    Settings& settings_data = storage.GetSettings();
     hw.ProcessAllControls();
     toggle.Debounce();
     mode_button.Debounce();
@@ -31,11 +47,57 @@ void controls()
     bool freezeGate = hw.gate_in_1.State();
     parameters->freeze = freezeGate;
 
+    bool grainGate = hw.gate_in_2.State();
+    parameters->trigger = grainGate;
+
     dsy_gpio_write(&hw.gate_out_1, freezeGate);
-    dsy_gpio_write(&hw.gate_out_2, freezeGate);
+    dsy_gpio_write(&hw.gate_out_2, grainGate);
+
+    float posKnob;
+    float sizeKnob;
+    float densityKnob;
+    float textureknob;
+    float pitchKnob;
+    float panKnob;
+    float dryWetKnob;
+    float revKnob;
+
+    float pitchCV = hw.GetAdcValue(CV_5);
+    float posCV = hw.GetAdcValue(CV_6);
+    float densityCV = hw.GetAdcValue(CV_7);
+    float textureCV = hw.GetAdcValue(CV_8);
 
     if (shift == true)
-    {   
+    {
+
+        if(mode_button.TimeHeldMs() >= 5000)
+        {
+            // Light up the LED to indicate that releasing the button will enter
+            // the calibration state.
+            led_mode = 1.f;
+            if(settings_state != CALIBRATE)
+            {
+                // Holding the mode button while in shift mode enters the calibration
+                // state.
+                settings_state = CALIBRATE;
+                calibration.Start();
+            }
+        }
+        else if(settings_state == CALIBRATE)
+        {
+            float cv      = hw.GetAdcValue(CV_5);
+            bool  pressed = mode_button.RisingEdge();
+            if(calibration.ProcessCalibration(cv, pressed))
+            {
+                calibration.cal.GetData(settings_data.scale,
+                                        settings_data.offset);
+                trigger_save   = true;
+                settings_state = NONE;
+            }
+            led_mode = calibration.GetBrightness();
+        }
+
+
         if (mode_button.RisingEdge())
         {
             pbmode = (pbmode + 1) %4;
@@ -44,21 +106,10 @@ void controls()
         }
         hw.WriteCvOut(2,led_mode);
 
-        float posKnob = hw.GetAdcValue(CV_1);
-        float posCV = hw.GetAdcValue(CV_5);
-        parameters->position = DSY_CLAMP((posKnob + posCV),0,1);
-
-        float sizeKnob = hw.GetAdcValue(CV_2);
-        float sizeCV = hw.GetAdcValue(CV_6);
-        parameters->size = DSY_CLAMP((sizeKnob + sizeCV),0.01,1); //too small values for the size leads to crashes.
-
-        float densityKnob = hw.GetAdcValue(CV_3);
-        float densityCV = hw.GetAdcValue(CV_7);
-        parameters->density = DSY_CLAMP((densityKnob + densityCV),0,1);
-
-        float textureknob = hw.GetAdcValue(CV_4);
-        float textureCV = hw.GetAdcValue(CV_8);
-        parameters->texture = DSY_CLAMP((textureknob + textureCV),0,1);
+        posKnob = hw.GetAdcValue(CV_1);
+        sizeKnob = hw.GetAdcValue(CV_2);
+        densityKnob = hw.GetAdcValue(CV_3);
+        textureknob = hw.GetAdcValue(CV_4);
     }
     else if (shift == false)
     {
@@ -70,18 +121,21 @@ void controls()
         }
         hw.WriteCvOut(2,led_quality);
 
-        float pitchKnob = hw.GetAdcValue(CV_1);
-        parameters->pitch = pitchKnob;
-
-        float panKnob = hw.GetAdcValue(CV_2);
-        parameters->stereo_spread = panKnob;
-
-        float dryWetKnob = hw.GetAdcValue(CV_3);
-        parameters->dry_wet = dryWetKnob;
-
-        float revKnob = hw.GetAdcValue(CV_4);
-        parameters->reverb = revKnob;
+        pitchKnob = hw.GetAdcValue(CV_1);
+        panKnob = hw.GetAdcValue(CV_2);
+        dryWetKnob = hw.GetAdcValue(CV_3);
+        revKnob = hw.GetAdcValue(CV_4);
     }
+    parameters->position = DSY_CLAMP((posKnob + posCV),0,1);
+    parameters->size = DSY_CLAMP((sizeKnob),0.01,1); //too small values for the size leads to crashes.
+    parameters->density = DSY_CLAMP((densityKnob + densityCV),0,1);
+    parameters->texture = DSY_CLAMP((textureknob + textureCV),0,1);
+
+    parameters->pitch = pitchKnob+pitchCV;
+    parameters->stereo_spread = panKnob;
+    parameters->dry_wet = dryWetKnob;
+    parameters->reverb = revKnob;
+    
 }
 
 
@@ -140,5 +194,11 @@ int main(void)
     while(1)
     {
         processor.Prepare();
+        hw.Delay(1);
+        if(trigger_save)
+        {
+            storage.Save();
+            trigger_save = false;
+        }
     }
 }
