@@ -38,6 +38,15 @@ int turingLength = 4;                                   // Length of loop
 int counter = 0;                                        // Counter to count the time
 float turingChance = 0;                                 // Chance for new random value
 
+float time_knob = 0.5;
+float time = 0.5;
+float damp_knob = 0.5;
+float damp = 0.5;
+float chanceKnob = 0.5;
+float timingControlKnob = 0.5;
+float lengthControlKnob = 0.5;
+float foldKnob = 0.5;
+
 void turingMachineCV()
 {   
     turingBuffer[counter] = midiNotes[rand() %5];
@@ -64,34 +73,54 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     if (controlEnabled)
     {
         patch.WriteCvOut(2,4);
-        float time_knob = patch.GetAdcValue(CV_1);
-        float time      = fmap(time_knob, 0.3f, 0.99f);
-
-        float damp_knob = patch.GetAdcValue(CV_2);
-        float damp      = fmap(damp_knob, 1000.f, 19000.f, Mapping::LOG);
-
-        in_level = patch.GetAdcValue(CV_3);
-
-        send_level = patch.GetAdcValue(CV_4);
-
+        if (abs(time_knob - patch.GetAdcValue(CV_1)) < 0.1)
+        {
+            time_knob = patch.GetAdcValue(CV_1);
+            time      = fmap(time_knob, 0.3f, 0.99f);
+        }
+        if (abs(damp_knob - patch.GetAdcValue(CV_2)) < 0.1)
+        {
+            damp_knob = patch.GetAdcValue(CV_2);
+            damp      = fmap(damp_knob, 1000.f, 19000.f, Mapping::LOG);
+        }
+        if (abs(in_level - patch.GetAdcValue(CV_3)) < 0.1)
+        {
+            in_level = patch.GetAdcValue(CV_3);
+        }
+        if (abs(send_level - patch.GetAdcValue(CV_4)) < 0.1)
+        {
+            send_level = patch.GetAdcValue(CV_4);
+        }
         reverb.SetFeedback(time);
         reverb.SetLpFreq(damp);
     }
     else
     {
         // Adjust chance with CV_1
-        float chanceKnob = patch.GetAdcValue(CV_1);
-        turingChance = static_cast<int>(fmap(chanceKnob,-50,50));
-
+        if (abs(chanceKnob - patch.GetAdcValue(CV_1)) < 0.1)
+        {
+            chanceKnob = patch.GetAdcValue(CV_1);
+            turingChance = static_cast<int>(fmap(chanceKnob,-50,50));
+        }
         // Adjust timing with CV_2
-        float timingControlKnob = patch.GetAdcValue(CV_2);
-        msInterval = static_cast<int>(1010 - (timingControlKnob * 1000));
-
+        if (abs(timingControlKnob - patch.GetAdcValue(CV_2)) < 0.1)
+        {
+            timingControlKnob = patch.GetAdcValue(CV_2);
+            msInterval = static_cast<int>(1010 - (timingControlKnob * 1000));
+        }
         // Adjust buffer length with CV_3
-        float lengthControlKnob = patch.GetAdcValue(CV_3);
-        turingLength = pow2[static_cast<int>(fmap(lengthControlKnob,1,6))];
+        if (abs(timingControlKnob - patch.GetAdcValue(CV_3)) < 0.1)
+        {
+            lengthControlKnob = patch.GetAdcValue(CV_3);
+            turingLength = pow2[static_cast<int>(fmap(lengthControlKnob,1,6))];
+        }
+        // Adjust wavefold with CV_4
+        if (abs(foldKnob - patch.GetAdcValue(CV_4)) < 0.1)
+        {
+            foldKnob = patch.GetAdcValue(CV_4);
+            turingLength = pow2[static_cast<int>(fmap(lengthControlKnob,1,6))];
+        }
 
-        float foldKnob = patch.GetAdcValue(CV_4);
         float foldCV = 1 + abs(patch.GetAdcValue(CV_5));
         foldAmount = 1 + foldCV*foldKnob*3;
         wf.SetGain(foldAmount);
