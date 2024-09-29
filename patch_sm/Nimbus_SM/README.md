@@ -13,15 +13,13 @@ audio processor, specializing in making huge clouds of sound from even the tinie
 Ported from [pichenettes/eurorack](https://github.com/pichenettes/eurorack)
 
 ## TODO list for the Patch SM Port:
-- Looks like CV now only works when SW is Up, fix this.
-- Implement soft takeover when toggling the switch
-- Think of something to control the stereo spread (now fixed to 100% stereo spread), perhaps holding down B7 while twisting a knob changes this
 - Check if V/Oct CV input tracks properly
-- Idea: Implement VU meter which is used to indicate input signal when the button has not been pressed for a while
 - Idea: Think of a function for CV1 Out (maybe Envelope Follower for Input Signal / VU meter)
-- Idea: use led blinking to indicate mode/quality for a better insight about selection (best implemented in conjunction with VU meter because a permanent quick blinking led is annoying)
 
 ## Controls
+Every knob has two functions depending on the toggle switch. Only if the position of the knob matches the last stored value of the parameter the knob will control the parameter. This allows you to tweak only one setting when flipping the switch without the other parameters to be changed aswell. But starting the module you might need to twist the knobs to find the "last stored value".
+
+
 
 <table><thead>
   <tr>
