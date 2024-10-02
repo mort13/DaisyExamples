@@ -5,7 +5,7 @@ In contrast to the Gamut Repetitor this wont generate notes below the root note,
 Adding more scales via the switches is still a work in progress.
 
 ## Controls
-### Input
+
 | Input | Alternative | Function | Comment |
 | CV_1 | CV_5 | Root Note | Sets the lowest note of the scale |
 | CV_2 | CV_6 | Spread | Selects the amount of different notes above root note |
@@ -17,8 +17,6 @@ Adding more scales via the switches is still a work in progress.
 | Switch | --- | --- | Unassigned |
 | In_L | --- | --- | Unassigned |
 | In_R | --- | --- | Unassigned |
-
-### Output
 | Gate1_out | --- | Gatethrough | Passes the gate through |
 | Gate2_out | --- | Gatethrough | Passes the gate through |
 | Out_L | --- | --- | Unassigned |
