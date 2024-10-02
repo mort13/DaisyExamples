@@ -6,7 +6,7 @@ Adding more scales via the switches is still a work in progress.
 
 ## Controls
 
-| Input | Alternative | Function | Comment |
+| I/O | Alternative | Function | Comment |
 | --- | --- | --- | --- |
 | CV_1 | CV_5 | Root Note | Sets the lowest note of the scale |
 | CV_2 | CV_6 | Spread | Selects the amount of different notes above root note |
@@ -18,8 +18,8 @@ Adding more scales via the switches is still a work in progress.
 | Switch | --- | --- | Unassigned |
 | In_L | --- | --- | Unassigned |
 | In_R | --- | --- | Unassigned |
-| Gate1_out | --- | Gatethrough | Passes the gate through |
-| Gate2_out | --- | Gatethrough | Passes the gate through |
+| Gate1_out | --- | Gate1_through | Passes the gate through |
+| Gate2_out | --- | Gate2_through | Passes the gate through |
 | Out_L | --- | --- | Unassigned |
 | Out_R | --- | --- | Unassigned |
 
