@@ -7,6 +7,7 @@ Adding more scales via the switches is still a work in progress.
 ## Controls
 
 | Input | Alternative | Function | Comment |
+| --- | --- | --- | --- |
 | CV_1 | CV_5 | Root Note | Sets the lowest note of the scale |
 | CV_2 | CV_6 | Spread | Selects the amount of different notes above root note |
 | CV_3 | CV_7 | Bufferlength | Sets the length of the buffer, fully cw new random notes are fed into the buffer |
