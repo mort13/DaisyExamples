@@ -14,7 +14,7 @@ Adding more scales via the switches is still a work in progress.
 | CV_4 | CV_8 | Shift | Shifts the selection of notes in scale 2 oct up or down |
 | Gate1_in | --- | In | Plays the next note in the buffer |
 | Gate2_in | --- | Reset | Resets the read and write position back to 0 |
-| Button | --- | --- | Unassigned |
+| Button | --- | Scale selection | Cycles through three different scales (minor Pentatonic, Dorian, Lydian) |
 | Switch | --- | --- | Unassigned |
 | In_L | --- | --- | Unassigned |
 | In_R | --- | --- | Unassigned |
