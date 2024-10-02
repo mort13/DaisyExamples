@@ -6,17 +6,28 @@ using namespace daisysp;
 using namespace patch_sm;
 
 DaisyPatchSM patch;
-Switch toggle;
+Switch toggle, scaleButton;
+
 
 
 // GaRep variables
-int minorPentatonic[25] = { 0,  3,  5,  7, 10,
+int minorPentatonic[25] = {  0,  3,  5,  7, 10,            // C, Eb, F, G, Bb
                             12, 15, 17, 19, 22,
                             24, 27, 29, 31, 34,
                             36, 39, 41, 43, 46,
-                            48, 51, 53, 55, 58};// C, Eb, F, G, Bb
-int lenScale = 5;
-int pow2[7] = {2,4,8,16,32,64,128};             // Lookup table for pow2
+                            48, 51, 53, 55, 58};
+int Dorian[30] =          {  0,  2,  3,  5,  7, 10,        // C, D, Eb, F, G, A, Bb
+                            12, 14, 15, 17, 19, 22,
+                            24, 26, 27, 29, 31, 34,
+                            36, 38, 39, 41, 43, 46,
+                            48, 50, 51, 53, 55, 58};
+int Lydian[35]=           {  0,  2,  4,  6,  7,  9, 11,    // C, D, E, F#, G, A, B 
+                            12, 14, 16, 18, 19, 21, 23,
+                            24, 26, 28, 30, 31, 33, 35,
+                            36, 38, 40, 42, 43, 45, 47,
+                            48, 50, 52, 54, 55, 57, 59};
+int scalesLengths[3] = {5,6,7};
+int lenScale = scalesLengths[0];
 int bufferLength[8] = {2,4,6,7,8,12,16,16};           // Bufferlength for CV values
 int midiBuffer[16] = {0};
 int RHead = 0;
@@ -24,16 +35,18 @@ int WHead = 0;
 int loopLength = 2;
 int counter = 0;
 bool sendnote = false;
+int selScale = 0;
+int* scales[3] = {minorPentatonic,Dorian,Lydian};
 
 float mtocv(int midi)
 {
-    return static_cast<float>(midi) / 12.0f;;
+    return static_cast<float>(midi) / 12.0f;
 }
 
-float selectNote(int note, int root, int spread, int shift)
+float selectNote(int note, int root, int spread, int shift,int scale[])
 {
     int selNote = 5 + (note %spread) + shift;
-    return (minorPentatonic[selNote] + root);
+    return (scale[selNote] + root);
 }
 
 void AudioCallback(AudioHandle::InputBuffer  in,
@@ -42,6 +55,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 { 
     patch.ProcessAnalogControls();
     toggle.Debounce();
+    scaleButton.Debounce();
     bool tr1 = patch.gate_in_1.Trig();
     bool tr2 = patch.gate_in_2.Trig();
     dsy_gpio_write(&patch.gate_out_1, patch.gate_in_1.State());
@@ -64,6 +78,13 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     int shiftCV = int(patch.GetAdcValue(CV_8)*(lenScale/5));
     int shift = DSY_CLAMP(shiftKnob+shiftCV,-lenScale,lenScale);
 
+    if (scaleButton.RisingEdge())
+    {
+        selScale = (selScale + 1)%3;
+        lenScale = scalesLengths[selScale];
+        patch.WriteCvOut(2,3+selScale);
+    }
+
     if (tr2)
     {
         RHead = 0;
@@ -77,14 +98,14 @@ void AudioCallback(AudioHandle::InputBuffer  in,
             patch.WriteCvOut(2,5);
             sendnote = true;
             WHead = (WHead + 1) %loopLength;
-            midiBuffer[WHead] = rand()%5;
+            midiBuffer[WHead] = rand()%lenScale;
             RHead = WHead;
         }
         else
         {
             RHead = (RHead +1) %loopLength;
         }
-        float noteOut = selectNote(midiBuffer[RHead],pitch,spread,shift);
+        float noteOut = selectNote(midiBuffer[RHead],pitch,spread,shift,scales[selScale]);
         patch.WriteCvOut(1,mtocv(noteOut));
     }
     
@@ -105,6 +126,12 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 int main(void)
 {
     patch.Init();
+    float sample_rate = patch.AudioSampleRate();
+    scaleButton.Init(patch.B7,
+                    sample_rate,
+                    Switch::TYPE_MOMENTARY,
+                    Switch::POLARITY_INVERTED,
+                    Switch::PULL_UP);
     toggle.Init(patch.B8);
     patch.StartAudio(AudioCallback);
     while(1) {}
