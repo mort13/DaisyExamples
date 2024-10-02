@@ -1,13 +1,13 @@
-#include "daisy_patch_sm.h"
 #include "daisysp.h"
+#include "daisy_patch_sm.h"
 
 using namespace daisy;
 using namespace daisysp;
 using namespace patch_sm;
 
+
 DaisyPatchSM patch;
 Switch toggle, scaleButton;
-
 
 
 // GaRep variables
@@ -37,6 +37,7 @@ int counter = 0;
 bool sendnote = false;
 int selScale = 0;
 int* scales[3] = {minorPentatonic,Dorian,Lydian};
+float led_brightness{0.f};
 
 float mtocv(int midi)
 {
@@ -52,7 +53,7 @@ float selectNote(int note, int root, int spread, int shift,int scale[])
 void AudioCallback(AudioHandle::InputBuffer  in,
                    AudioHandle::OutputBuffer out,
                    size_t                    size)
-{ 
+{
     patch.ProcessAnalogControls();
     toggle.Debounce();
     scaleButton.Debounce();
@@ -60,17 +61,16 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     bool tr2 = patch.gate_in_2.Trig();
     dsy_gpio_write(&patch.gate_out_1, patch.gate_in_1.State());
 
-
     int pitchKnob = int(fmap(patch.GetAdcValue(CV_1),0,12));
-    float pitchCV = patch.GetAdcValue(CV_5)*12;
-    int pitch = int(DSY_CLAMP(pitchKnob+pitchCV,0,72));
+    int pitchCV = int(patch.GetAdcValue(CV_5)*12);
+    int pitch = pitchKnob+pitchCV;
 
     int spreadKnob = int(fmap(patch.GetAdcValue(CV_2),1,2*lenScale));
     int spreadCV = int(patch.GetAdcValue(CV_6)*2*(lenScale/5));
     int spread = DSY_CLAMP(spreadKnob+spreadCV,0,2*lenScale);
 
     int lengthKnob = 1+int(patch.GetAdcValue(CV_3)*8);
-    int lengthCV = 0;//int(fmap(DSY_CLAMP(patch.GetAdcValue(CV_7),0,5)/5,0,8));
+    int lengthCV = 0;//int(DSY_CLAMP(patch.GetAdcValue(CV_7),0,5)/5,0,8));
     int length = DSY_CLAMP(lengthKnob + lengthCV,0,8);
     loopLength = bufferLength[length];
 
@@ -82,9 +82,8 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     {
         selScale = (selScale + 1)%3;
         lenScale = scalesLengths[selScale];
-        patch.WriteCvOut(2,3+selScale);
+        led_brightness = selScale+3;
     }
-
     if (tr2)
     {
         RHead = 0;
@@ -95,7 +94,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     {
         if (lengthKnob >= 8)
         {
-            patch.WriteCvOut(2,5);
+            //led_brightness = 5;
             sendnote = true;
             WHead = (WHead + 1) %loopLength;
             midiBuffer[WHead] = rand()%(2*lenScale);
@@ -112,15 +111,15 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     if (sendnote&&counter < 100)
     {
         counter = (counter + 1);
-        patch.WriteCvOut(2,5-(counter/20));
+        led_brightness = 5-(counter/20);
     }
     else
     {
         counter = 0;
         sendnote = false;
-        patch.WriteCvOut(2,0);
+        //led_brightness = 0;
     }
-
+    patch.WriteCvOut(CV_OUT_2, led_brightness);
 }
 
 int main(void)

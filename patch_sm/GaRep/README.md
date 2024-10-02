@@ -24,4 +24,5 @@ Adding more scales via the switches is still a work in progress.
 | Out_R | --- | --- | Unassigned |
 
 
-
+## ToDo
+- Setting up a calibration procedure.
