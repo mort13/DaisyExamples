@@ -45,7 +45,7 @@ float mtocv(int midi)
 
 float selectNote(int note, int root, int spread, int shift,int scale[])
 {
-    int selNote = 5 + (note %spread) + shift;
+    int selNote = lenScale + (note %spread) + shift;
     return (scale[selNote] + root);
 }
 
@@ -98,7 +98,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
             patch.WriteCvOut(2,5);
             sendnote = true;
             WHead = (WHead + 1) %loopLength;
-            midiBuffer[WHead] = rand()%lenScale;
+            midiBuffer[WHead] = rand()%(2*lenScale);
             RHead = WHead;
         }
         else
