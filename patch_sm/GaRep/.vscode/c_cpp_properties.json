@@ -30,7 +30,8 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/../../libDaisy/**",
                 "${workspaceFolder}/../../DaisySP/**",
-                "/home/moritz/Developer/Daisy/libDaisy/src"
+                "/home/moritz/Developer/Daisy/libDaisy/src",
+                "/home/moritz/Developer/Daisy/libDaisy/src/util"
             ],
             "name": "macOS"
         }

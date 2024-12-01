@@ -1,14 +1,17 @@
 #include "daisysp.h"
 #include "daisy_patch_sm.h"
 
+
 using namespace daisy;
 using namespace daisysp;
 using namespace patch_sm;
 
 
 DaisyPatchSM patch;
-Switch toggle, scaleButton;
-
+Switch toggle, modeButton;
+VoctCalibration calibration;
+ReverbSc reverb;
+Wavefolder wf;
 
 // GaRep variables
 int minorPentatonic[25] = {  0,  3,  5,  7, 10,            // C, Eb, F, G, Bb
@@ -35,9 +38,28 @@ int WHead = 0;
 int loopLength = 2;
 int counter = 0;
 bool sendnote = false;
+int calstep = 0;
+bool calibrating = false;
+int calcounter = 0;
 int selScale = 0;
+int selMode = 0;
 int* scales[3] = {minorPentatonic,Dorian,Lydian};
 float led_brightness{0.f};
+float cal1v;
+float cal3v;
+
+int pitch = 0;
+int spread = 0;
+int shift = 0;
+int lengthKnob = 0;
+
+
+const float kDampFreqMin = log(1000.f);
+const float kDampFreqMax = log(19000.f);
+float inlevel =0.5;
+float revSend = 0;
+float foldSend = 0;
+float foldAmount = 0.1;
 
 float mtocv(int midi)
 {
@@ -56,34 +78,104 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 {
     patch.ProcessAnalogControls();
     toggle.Debounce();
-    scaleButton.Debounce();
+    modeButton.Debounce();
     bool tr1 = patch.gate_in_1.Trig();
     bool tr2 = patch.gate_in_2.Trig();
+
     dsy_gpio_write(&patch.gate_out_1, patch.gate_in_1.State());
+    dsy_gpio_write(&patch.gate_out_2, patch.gate_in_2.State());
 
-    int pitchKnob = int(fmap(patch.GetAdcValue(CV_1),0,12));
-    int pitchCV = int(patch.GetAdcValue(CV_5)*12);
-    int pitch = pitchKnob+pitchCV;
-
-    int spreadKnob = int(fmap(patch.GetAdcValue(CV_2),1,2*lenScale));
-    int spreadCV = int(patch.GetAdcValue(CV_6)*2*(lenScale/5));
-    int spread = DSY_CLAMP(spreadKnob+spreadCV,0,2*lenScale);
-
-    int lengthKnob = 1+int(patch.GetAdcValue(CV_3)*8);
-    int lengthCV = 0;//int(DSY_CLAMP(patch.GetAdcValue(CV_7),0,5)/5,0,8));
-    int length = DSY_CLAMP(lengthKnob + lengthCV,0,8);
-    loopLength = bufferLength[length];
-
-    int shiftKnob = int(fmap(patch.GetAdcValue(CV_4),-lenScale,lenScale));
-    int shiftCV = int(patch.GetAdcValue(CV_8)*(lenScale/5));
-    int shift = DSY_CLAMP(shiftKnob+shiftCV,-lenScale,lenScale);
-
-    if (scaleButton.RisingEdge())
+//Control to GaRep
+    if (selMode == 0)
     {
-        selScale = (selScale + 1)%3;
-        lenScale = scalesLengths[selScale];
-        led_brightness = selScale+3;
+        int pitchKnob = int(fmap(patch.GetAdcValue(CV_1),0,12));
+        int pitchCV = calibration.ProcessInput(patch.GetAdcValue(CV_5)); //fix this with proper calibration
+        pitch = pitchKnob+pitchCV;
+
+        int spreadKnob = int(fmap(patch.GetAdcValue(CV_2),1,2*lenScale));
+        int spreadCV = int(patch.GetAdcValue(CV_6)*2*(lenScale/5));
+        spread = DSY_CLAMP(spreadKnob+spreadCV,0,2*lenScale);
+
+        lengthKnob = 1+int(patch.GetAdcValue(CV_3)*8);
+        int lengthCV = 0;//int(DSY_CLAMP(patch.GetAdcValue(CV_7),0,5)/5,0,8));
+        int length = DSY_CLAMP(lengthKnob + lengthCV,0,8);
+        loopLength = bufferLength[length];
+
+        int shiftKnob = int(fmap(patch.GetAdcValue(CV_4),-lenScale-1,lenScale+1));
+        int shiftCV = int(patch.GetAdcValue(CV_8)*(lenScale/5));
+        shift = DSY_CLAMP(shiftKnob+shiftCV,-lenScale,lenScale);
     }
+//Control for reverb
+    else if (selMode == 1)
+    {
+        float rev_time = 0.3 + (0.67 * patch.GetAdcValue(CV_1));
+        reverb.SetFeedback(rev_time);
+
+        float damp_control = patch.GetAdcValue(CV_2);
+        float damping = exp(kDampFreqMin + (damp_control * (kDampFreqMax - kDampFreqMin)));
+        reverb.SetLpFreq(damping);
+
+        inlevel = patch.GetAdcValue(CV_3);
+        revSend = patch.GetAdcValue(CV_4);
+    }
+//Control for wavfolding
+    else if (selMode == 2)
+    {
+        foldAmount = patch.GetAdcValue(CV_1);
+        float offset = patch.GetAdcValue(CV_2);
+        
+        foldSend = patch.GetAdcValue(CV_4);
+
+        wf.SetOffset(offset);
+        wf.SetGain(foldAmount*3);
+    }
+
+//Calibration (not done)
+    if(modeButton.TimeHeldMs() >= 5000 && calstep == 0)
+    {
+        calibrating = true;
+        calstep = 1;
+    }
+
+    if (calibrating)
+    {
+        if (modeButton.RisingEdge())
+        {
+            calstep = calstep + 1;
+        }
+        if (calstep == 1)
+        {
+            calcounter = (calcounter + 1) % 500;
+            led_brightness = calcounter/100;
+            cal1v = patch.GetAdcValue(CV_5);
+        }
+
+        if (calstep == 2)
+        {
+            calcounter = (calcounter + 1) % 1000;
+            led_brightness = calcounter/200;
+            cal3v = patch.GetAdcValue(CV_5); 
+        }
+        if (calstep == 3)
+        {
+            calibration.Record(cal1v,cal3v);
+            led_brightness = 0;
+            calstep = 0;
+            calibrating = false;
+        }
+
+
+    }
+
+
+//Selection of mode
+    if (modeButton.RisingEdge())
+    {
+        selMode = (selMode + 1)%3;
+        led_brightness = selMode+1;
+    }
+
+//GaRep triggering
     if (tr2)
     {
         RHead = 0;
@@ -119,14 +211,33 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         sendnote = false;
         //led_brightness = 0;
     }
+
     patch.WriteCvOut(CV_OUT_2, led_brightness);
+
+    for(size_t i = 0; i < size; i++)
+    {
+        /** Let's scale the input for the two destinations we want to send it to using multiplication. */
+        float dryl  = IN_L[i] * inlevel;
+        float dryr  = IN_R[i] * inlevel;
+        float sendl = wf.Process(IN_L[i])* (revSend / foldAmount);
+        float sendr = wf.Process(IN_R[i]) * (revSend / foldAmount);
+        float wetl, wetr;
+        /** Process the send signal through the reverb */
+        reverb.Process(sendl, sendr, &wetl, &wetr);
+
+        /** Add the dry and the wet together, and assign those to the output */
+        OUT_L[i] = dryl + wetl;
+        OUT_R[i] = dryr + wetr;
+    }
 }
 
 int main(void)
 {
     patch.Init();
+    reverb.Init(patch.AudioSampleRate());
+    wf.Init();
     float sample_rate = patch.AudioSampleRate();
-    scaleButton.Init(patch.B7,
+    modeButton.Init(patch.B7,
                     sample_rate,
                     Switch::TYPE_MOMENTARY,
                     Switch::POLARITY_INVERTED,
