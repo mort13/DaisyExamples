@@ -92,9 +92,12 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         int pitchCV = calibration.ProcessInput(patch.GetAdcValue(CV_5)); //fix this with proper calibration
         pitch = pitchKnob+pitchCV;
 
-        int spreadKnob = int(fmap(patch.GetAdcValue(CV_2),1,2*lenScale));
-        int spreadCV = int(patch.GetAdcValue(CV_6)*2*(lenScale/5));
-        spread = DSY_CLAMP(spreadKnob+spreadCV,0,2*lenScale);
+        int spreadKnob = fmap(patch.GetAdcValue(CV_2),1,2*lenScale);
+        int spreadCV = patch.GetAdcValue(CV_6)*3.5;//Fix with proper calib
+        spread = DSY_CLAMP(int(spreadKnob+spreadCV),0,2*lenScale);
+        float led_brightness1 = patch.GetAdcValue(CV_6);
+
+        patch.WriteCvOut(CV_OUT_2, led_brightness1);
 
         lengthKnob = 1+int(patch.GetAdcValue(CV_3)*8);
         int lengthCV = 0;//int(DSY_CLAMP(patch.GetAdcValue(CV_7),0,5)/5,0,8));
@@ -102,7 +105,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         loopLength = bufferLength[length];
 
         int shiftKnob = int(fmap(patch.GetAdcValue(CV_4),-lenScale-1,lenScale+1));
-        int shiftCV = int(patch.GetAdcValue(CV_8)*(lenScale/5));
+        int shiftCV = int(patch.GetAdcValue(CV_8)*5);
         shift = DSY_CLAMP(shiftKnob+shiftCV,-lenScale,lenScale);
     }
 //Control for reverb
@@ -117,17 +120,6 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 
         inlevel = patch.GetAdcValue(CV_3);
         revSend = patch.GetAdcValue(CV_4);
-    }
-//Control for wavfolding
-    else if (selMode == 2)
-    {
-        foldAmount = patch.GetAdcValue(CV_1);
-        float offset = patch.GetAdcValue(CV_2);
-        
-        foldSend = patch.GetAdcValue(CV_4);
-
-        wf.SetOffset(offset);
-        wf.SetGain(foldAmount*3);
     }
 
 //Calibration (not done)
@@ -171,8 +163,8 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 //Selection of mode
     if (modeButton.RisingEdge())
     {
-        selMode = (selMode + 1)%3;
-        led_brightness = selMode+1;
+        selMode = (selMode + 1)%2;
+        //led_brightness = selMode+2;
     }
 
 //GaRep triggering
@@ -203,7 +195,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     if (sendnote&&counter < 100)
     {
         counter = (counter + 1);
-        led_brightness = 5-(counter/20);
+        //led_brightness = 5-(counter/20);
     }
     else
     {
@@ -212,15 +204,15 @@ void AudioCallback(AudioHandle::InputBuffer  in,
         //led_brightness = 0;
     }
 
-    patch.WriteCvOut(CV_OUT_2, led_brightness);
+    //patch.WriteCvOut(CV_OUT_2, led_brightness);
 
     for(size_t i = 0; i < size; i++)
     {
         /** Let's scale the input for the two destinations we want to send it to using multiplication. */
         float dryl  = IN_L[i] * inlevel;
         float dryr  = IN_R[i] * inlevel;
-        float sendl = wf.Process(IN_L[i])* (revSend / foldAmount);
-        float sendr = wf.Process(IN_R[i]) * (revSend / foldAmount);
+        float sendl = IN_L[i] * revSend;
+        float sendr = IN_L[i] * revSend;
         float wetl, wetr;
         /** Process the send signal through the reverb */
         reverb.Process(sendl, sendr, &wetl, &wetr);

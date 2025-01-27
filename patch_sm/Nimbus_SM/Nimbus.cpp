@@ -46,10 +46,11 @@ float posKnob = 0.5;
 float sizeKnob = 0.5;
 float densityKnob = 0.5;
 float textureknob = 0.5;
-float pitchKnob = 0;
+float pitchKnob = 0.5;
 float panKnob = 0.5;
 float dryWetKnob = 0.5;
 float revKnob = 0.5;
+float feedbackKnob = 0.25;
 
 void controls()
 {
@@ -117,9 +118,9 @@ void controls()
         {
             pitchKnob = hw.GetAdcValue(CV_1);
         }
-        if (abs(panKnob - hw.GetAdcValue(CV_2)) < 0.1)
+        if (abs(feedbackKnob - hw.GetAdcValue(CV_2)) < 0.1)
         {
-            panKnob = hw.GetAdcValue(CV_2);
+            feedbackKnob = hw.GetAdcValue(CV_2);
         }
         if (abs(dryWetKnob - hw.GetAdcValue(CV_3)) < 0.1)
         {
@@ -139,6 +140,7 @@ void controls()
     parameters->stereo_spread = panKnob;
     parameters->dry_wet = dryWetKnob;
     parameters->reverb = revKnob;
+    parameters->feedback = (feedbackKnob/2);
     
 }
 
