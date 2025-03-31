@@ -49,7 +49,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     {
         led_brightness = 4;
         
-        float rev_time = 0.3 + (0.67 * patch.GetAdcValue(CV_1));
+        float rev_time = 0.3 + (patch.GetAdcValue(CV_1));
         reverb.SetFeedback(rev_time);
 
         float damp_control = patch.GetAdcValue(CV_2);
