@@ -76,7 +76,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 
     for(size_t i = 0; i < size; i++)
     {
-        float dryl  = IN_L[i] * inlevel;
+        float dryl ReverbSc = IN_L[i] * inlevel;
         float dryr  = IN_R[i] * inlevel;
 
         float sendDell = IN_L[i] * delSend;
