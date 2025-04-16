@@ -13,8 +13,6 @@ Switch toggle, modeButton;
 DelayLine<float, MAX_DELAY> DSY_SDRAM_BSS delayl;
 DelayLine<float, MAX_DELAY> DSY_SDRAM_BSS delayr;
 ReverbSc reverb;
-Wavefolder wf;
-
 //
 float led_brightness{0.f};
 
@@ -23,12 +21,10 @@ const float kDampFreqMax = log(19000.f);
 float inlevel =0.5;
 float revSend = 0;
 float delSend = 0;
-float foldSend = 0;
-float foldAmount = 0.1;
 
-float deltime = 0.5;
-float delfb = 0.5;
-float kval = 0.5;  // Delay Vars
+float deltime = 0;
+float delfb = 0;
+float kval = 0;  // Delay Vars
 // Persistent filtered Value for smooth delay time changes.
 float smooth_time;
 
@@ -49,13 +45,12 @@ void AudioCallback(AudioHandle::InputBuffer  in,
     {
         led_brightness = 4;
         
-        float rev_time = 0.3 + (patch.GetAdcValue(CV_1));
+        float rev_time = 0.3 + (0.69 * patch.GetAdcValue(CV_1));
         reverb.SetFeedback(rev_time);
 
         float damp_control = patch.GetAdcValue(CV_2);
         float damping = exp(kDampFreqMin + (damp_control * (kDampFreqMax - kDampFreqMin)));
         reverb.SetLpFreq(damping);
-
         inlevel = patch.GetAdcValue(CV_3);
         revSend = patch.GetAdcValue(CV_4);
         
@@ -76,7 +71,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 
     for(size_t i = 0; i < size; i++)
     {
-        float dryl ReverbSc = IN_L[i] * inlevel;
+        float dryl  = IN_L[i] * inlevel;
         float dryr  = IN_R[i] * inlevel;
 
         float sendDell = IN_L[i] * delSend;
@@ -95,6 +90,7 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 
         float sendrevl = (IN_L[i] + delSigl) * revSend;
         float sendrevr = (IN_R[i] + delSigr) * revSend;
+        
 
         float wetl, wetr;
         
@@ -112,14 +108,12 @@ void AudioCallback(AudioHandle::InputBuffer  in,
 int main(void)
 {
     patch.Init();
-    reverb.Init(patch.AudioSampleRate());
     float sampleRate = patch.AudioSampleRate();
-    wf.Init();
+    reverb.Init(sampleRate);
     delayl.Init();
     delayl.SetDelay(sampleRate * 0.8f); // half second delay
     delayr.Init();
     delayr.SetDelay(sampleRate * 0.8f); // half second delay
-    
     modeButton.Init(patch.B7,
                     sampleRate,
                     Switch::TYPE_MOMENTARY,
